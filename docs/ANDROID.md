@@ -163,10 +163,43 @@ Dua hal penting di situ:
 | Produk tidak ada fotonya | URL gambar memakai `localhost` | Restart API dari `start-all.bat` (URL gambar dibuat dari host request) |
 | Chat tidak realtime | Port WS diblokir / `MAMO_WS` tidak di-set | Chat tetap jalan lewat REST (refresh manual), atau build ulang dengan `MAMO_WS` benar |
 | `flutter build apk` gagal: "requires symlink support" | Developer Mode Windows nonaktif | `start ms-settings:developers` → aktifkan Developer Mode |
+| Build gagal di plugin acak: "Could not close incremental caches ... tab" | Cache Kotlin korup (build pernah dihentikan di tengah) | `flutter clean` **dan** set `kotlin.incremental=false` di `android/gradle.properties` — lihat bawah |
 | APK terinstall tapi langsung crash | APK lama / arsitektur tidak cocok | `flutter clean` lalu build ulang |
 | HP tidak terdeteksi `adb devices` | Kabel/driver/USB debugging | Lihat langkah di Cara B |
 
 ---
+
+## Kalau build gagal dengan "Could not close incremental caches"
+
+Gejala: build gagal di **plugin yang berbeda-beda** tiap kali (mis. `image_picker_android`,
+`shared_preferences_android`) dengan pesan:
+
+```
+Execution failed for task ':image_picker_android:compileDebugKotlin'.
+> Could not close incremental caches in .../caches-jvm/jvm/kotlin:
+  class-fq-name-to-source.tab, source-to-classes.tab, internal-name-to-source.tab
+```
+
+Penyebab: build pernah dihentikan di tengah compile (timeout terminal, Ctrl-C, jendela ditutup),
+sehingga cache incremental Kotlin tertinggal dalam kondisi tidak konsisten.
+
+Solusi — **dua langkah**, kalau hanya `flutter clean` nanti muncul lagi:
+
+```bash
+cd D:\MAMO\app
+flutter clean
+```
+
+lalu tambahkan di `android/gradle.properties`:
+
+```properties
+kotlin.incremental=false
+kotlin.incremental.android=false
+```
+
+Build jadi sedikit lebih lambat, tapi tidak lagi gagal. Flag ini sudah terpasang di project MAMO.
+
+**Jangan hentikan `flutter build apk` di tengah jalan** — itulah yang membuat cache korup.
 
 ## Kalau IP WiFi sering berubah
 
