@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.dart_tool/
+.packages
+
+# Build output
+app/build/
+admin/dist/
+server/uploads/*
+!server/uploads/.gitkeep
+
+# PostgreSQL data & binaries (portable, jangan di-commit)
+server/pgsql/
+server/pgsql_data/
+server/pgsql.log
+server/pgsql.zip
+
+# Secrets
+.env
+server/.env
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

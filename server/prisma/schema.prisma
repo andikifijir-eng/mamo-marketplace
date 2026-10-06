@@ -1,0 +1,369 @@
+// MAMO — Marketplace Mahasiswa Online
+// Database schema (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  buyer
+  seller
+  admin
+}
+
+enum AccountStatus {
+  active
+  suspended
+  banned
+}
+
+enum VerificationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ProductCondition {
+  new
+  used
+}
+
+enum ProductStatus {
+  draft
+  active
+  sold
+  archived
+  flagged
+  rejected
+}
+
+enum OrderStatus {
+  pending
+  accepted
+  processed
+  ready
+  completed
+  cancelled
+  rejected
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String        @map("password_hash")
+  role          Role          @default(buyer)
+  accountStatus AccountStatus @default(active) @map("account_status")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  profile       UserProfile?
+  addresses     UserAddress[]
+  verifications StudentVerification[]
+  products      Product[]           @relation("SellerProducts")
+  favorites     Favorite[]
+  cart          Cart?
+  buyerOrders   Order[]             @relation("BuyerOrders")
+  sellerOrders  Order[]             @relation("SellerOrders")
+  conversationsBuyer  Conversation[] @relation("ConversationBuyer")
+  conversationsSeller Conversation[] @relation("ConversationSeller")
+  messages      Message[]
+  notifications Notification[]
+  reviewsGiven  Review[]            @relation("Reviewer")
+  reviewsReceived Review[]          @relation("SellerReviews")
+  reports       Report[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  fullName  String   @map("full_name")
+  phone     String?
+  avatar    String?
+  bio       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Campus {
+  id        String   @id @default(uuid())
+  name      String
+  city      String?
+  address   String?
+  latitude  Float?
+  longitude Float?
+
+  verifications StudentVerification[]
+  products    Product[]
+
+  @@map("campuses")
+}
+
+model StudentVerification {
+  id               String             @id @default(uuid())
+  userId           String             @map("user_id")
+  campusId         String?            @map("campus_id")
+  studentIdentifier String           @map("student_identifier")
+  document         String?
+  status           VerificationStatus @default(pending)
+  reviewedBy       String?            @map("reviewed_by")
+  reviewedAt       DateTime?          @map("reviewed_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus Campus? @relation(fields: [campusId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("student_verifications")
+}
+
+model UserAddress {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  label     String
+  address   String
+  latitude  Float?
+  longitude Float?
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_addresses")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  parentId  String?  @map("parent_id")
+  name      String
+  icon      String?
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryChildren")
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  sellerId    String           @map("seller_id")
+  categoryId  String?          @map("category_id")
+  campusId    String?          @map("campus_id")
+  name        String
+  description String?
+  price       Int
+  stock       Int              @default(1)
+  condition   ProductCondition @default(used)
+  status      ProductStatus    @default(draft)
+  latitude    Float?
+  longitude   Float?
+  location    String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  seller   User            @relation("SellerProducts", fields: [sellerId], references: [id])
+  category Category?       @relation(fields: [categoryId], references: [id])
+  campus   Campus?         @relation(fields: [campusId], references: [id])
+  images   ProductImage[]
+  favorites Favorite[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  conversations Conversation[]
+  reviews  Review[]
+  reports  Report[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([campusId])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String  @map("product_id")
+  imageUrl  String  @map("image_url")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("favorites")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String @id @default(uuid())
+  cartId    String @map("cart_id")
+  productId String @map("product_id")
+  quantity  Int    @default(1)
+
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  buyerId         String      @map("buyer_id")
+  sellerId        String      @map("seller_id")
+  totalAmount     Int         @map("total_amount")
+  deliveryMethod  String      @map("delivery_method")
+  deliveryAddress String?     @map("delivery_address")
+  latitude        Float?
+  longitude       Float?
+  status          OrderStatus @default(pending)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  buyer  User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  items  OrderItem[]
+  review Review?
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String @map("order_id")
+  productId String @map("product_id")
+  quantity  Int
+  price     Int
+  subtotal  Int
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  buyerId   String   @map("buyer_id")
+  sellerId  String   @map("seller_id")
+  productId String?  @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  buyer   User     @relation("ConversationBuyer", fields: [buyerId], references: [id])
+  seller  User     @relation("ConversationSeller", fields: [sellerId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+  messages Message[]
+
+  @@unique([buyerId, sellerId, productId])
+  @@index([sellerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  senderId       String   @map("sender_id")
+  message        String
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  body      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  orderId    String   @unique @map("order_id")
+  productId  String   @map("product_id")
+  reviewerId String   @map("reviewer_id")
+  sellerId   String   @map("seller_id")
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  reviewer User    @relation("Reviewer", fields: [reviewerId], references: [id])
+  seller   User    @relation("SellerReviews", fields: [sellerId], references: [id])
+
+  @@index([productId])
+  @@index([sellerId])
+  @@map("reviews")
+}
+
+model Report {
+  id        String   @id @default(uuid())
+  reporterId String  @map("reporter_id")
+  productId String?  @map("product_id")
+  reason    String
+  detail    String?
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reporter User    @relation(fields: [reporterId], references: [id])
+  product  Product? @relation(fields: [productId], references: [id])
+
+  @@index([status])
+  @@map("reports")
+}
