@@ -65,6 +65,9 @@ class ProductCard extends StatelessWidget {
   final String conditionLabel;
   final VoidCallback? onTap;
 
+  /// Elemen opsional di kanan baris harga (mis. ikon hati di Home).
+  final Widget? trailing;
+
   const ProductCard({
     super.key,
     required this.name,
@@ -73,6 +76,7 @@ class ProductCard extends StatelessWidget {
     this.location,
     this.conditionLabel = 'Bekas',
     this.onTap,
+    this.trailing,
   });
 
   @override
@@ -105,11 +109,20 @@ class ProductCard extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600, height: 1.3)),
                   const SizedBox(height: 6),
-                  Text(rupiah.format(price),
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: MamoColors.primary)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(rupiah.format(price),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: MamoColors.primary)),
+                      ),
+                      if (trailing != null) trailing!,
+                    ],
+                  ),
                   if (location != null) ...[
                     const SizedBox(height: 4),
                     Row(children: [
