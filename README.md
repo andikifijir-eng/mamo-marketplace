@@ -20,7 +20,7 @@ D:\MAMO
 │   ├── src/routes/ 15 route module (auth, products, orders, chat, admin, ...)
 │   ├── tests/      e2e.js (58 assertion end-to-end)
 │   └── pgsql/      PostgreSQL 17.6 portable (tidak perlu install admin)
-└── docs/           API.md, DATABASE.md, FIGMA-MAPPING.md
+└── docs/           API.md, DATABASE.md, FIGMA-MAPPING.md, ANDROID.md
 ```
 
 ## Menjalankan Project
@@ -75,6 +75,20 @@ Untuk Android emulator, API default `http://10.0.2.2:4000/api`:
 ```bash
 flutter run --dart-define=MAMO_API=http://10.0.2.2:4000/api
 ```
+
+### 5. Menyambungkan ke HP Android
+
+Panduan lengkap: **`docs/ANDROID.md`** (build APK, USB debugging, firewall, troubleshooting,
+`adb reverse`).
+
+```bash
+cd D:\MAMO\app
+flutter build apk --release ^
+  --dart-define=MAMO_API=http://<IP-LAN-KOMPUTER>:4000/api ^
+  --dart-define=MAMO_WS=ws://<IP-LAN-KOMPUTER>:4000
+```
+
+Cek IP LAN: `ipconfig` → adapter **Wi-Fi** → `IPv4 Address` (bukan VMware).
 
 ## Akun Seed
 
