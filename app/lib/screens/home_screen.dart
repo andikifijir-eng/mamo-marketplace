@@ -166,7 +166,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF2F3F4),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(children: [
                     Icon(Icons.search, size: 19, color: MamoColors.textMuted),
@@ -229,7 +229,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               height: 40,
                               decoration: BoxDecoration(
                                 color: col.bg,
-                                borderRadius: BorderRadius.circular(13),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(_iconFor(cat.name), size: 19, color: col.fg),
                             ),
@@ -416,7 +416,7 @@ class _NearbyBanner extends StatelessWidget {
         height: 175,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
