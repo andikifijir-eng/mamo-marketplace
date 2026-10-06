@@ -18,20 +18,31 @@ final uploadRepoProvider = Provider((ref) => UploadRepository());
 final userRepoProvider = Provider((ref) => UserRepository());
 
 /// Status autentikasi aplikasi.
+///
+/// `initializing` dan `loading` SENGAJA dipisah:
+/// - `initializing` = masih memuat sesi tersimpan saat app dibuka (hanya sekali).
+///   Router memakai ini untuk menahan user di splash.
+/// - `loading` = ada operasi auth yang sedang jalan (login/register).
+///   Router TIDAK boleh memakai ini, kalau dipakai user akan terlempar ke
+///   splash saat login berlangsung dan nyangkut di sana.
 class AuthState {
+  final bool initializing;
   final bool loading;
   final bool loggedIn;
   final User? user;
   final String? error;
 
   const AuthState({
-    this.loading = true,
+    this.initializing = true,
+    this.loading = false,
     this.loggedIn = false,
     this.user,
     this.error,
   });
 
-  AuthState copyWith({bool? loading, bool? loggedIn, User? user, String? error}) => AuthState(
+  AuthState copyWith({bool? initializing, bool? loading, bool? loggedIn, User? user, String? error}) =>
+      AuthState(
+        initializing: initializing ?? this.initializing,
         loading: loading ?? this.loading,
         loggedIn: loggedIn ?? this.loggedIn,
         user: user ?? this.user,
@@ -48,47 +59,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> restore() async {
     final token = await SessionStore.token;
     if (token == null || token.isEmpty) {
-      state = const AuthState(loading: false, loggedIn: false);
+      state = const AuthState(initializing: false);
       return;
     }
     try {
       final user = await ref.read(authRepoProvider).me();
-      state = AuthState(loading: false, loggedIn: true, user: user);
+      state = AuthState(initializing: false, loggedIn: true, user: user);
     } catch (_) {
       // Token invalid/expired → paksa login ulang
       await SessionStore.clear();
-      state = const AuthState(loading: false, loggedIn: false);
+      state = const AuthState(initializing: false);
     }
   }
 
+  /// Tidak mengubah `initializing` — supaya router tidak melempar ke splash.
   Future<bool> login(String email, String password) async {
     state = state.copyWith(loading: true);
     try {
       final user = await ref.read(authRepoProvider).login(email: email, password: password);
-      state = AuthState(loading: false, loggedIn: true, user: user);
+      state = AuthState(initializing: false, loggedIn: true, user: user);
       return true;
     } catch (e) {
-      state = AuthState(loading: false, loggedIn: false, error: ApiClient.errorMessage(e));
+      state = AuthState(initializing: false, loggedIn: false, error: ApiClient.errorMessage(e));
       return false;
     }
   }
 
+  /// Tidak mengubah `initializing` — supaya router tidak melempar ke splash.
   Future<bool> register(String email, String password, String fullName, {String? phone}) async {
     state = state.copyWith(loading: true);
     try {
       final user = await ref.read(authRepoProvider)
           .register(email: email, password: password, fullName: fullName, phone: phone);
-      state = AuthState(loading: false, loggedIn: true, user: user);
+      state = AuthState(initializing: false, loggedIn: true, user: user);
       return true;
     } catch (e) {
-      state = AuthState(loading: false, loggedIn: false, error: ApiClient.errorMessage(e));
+      state = AuthState(initializing: false, loggedIn: false, error: ApiClient.errorMessage(e));
       return false;
     }
   }
 
   Future<void> logout() async {
     await ref.read(authRepoProvider).logout();
-    state = const AuthState(loading: false, loggedIn: false);
+    state = const AuthState(initializing: false, loggedIn: false);
   }
 
   Future<void> refresh() async {

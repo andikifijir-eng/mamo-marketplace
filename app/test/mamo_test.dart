@@ -157,13 +157,21 @@ void main() {
   });
 
   group('Provider dasar', () {
-    test('AuthState default: loading=true & belum login (mencegah redirect dini)', () {
+    test('AuthState default: initializing=true & belum login (mencegah redirect dini)', () {
       // Diuji langsung pada nilai default — bukan lewat container, karena
       // konstruksi AuthNotifier memicu restore() async yang membuat hasil tidak deterministik.
       const s = AuthState();
-      expect(s.loading, true);
+      expect(s.initializing, true);
       expect(s.loggedIn, false);
       expect(s.user, isNull);
+    });
+
+    test('AuthState default: loading=false (login tidak boleh mengunci di splash)', () {
+      // Regression: dulu `loading` dipakai router untuk menahan di splash.
+      // Saat login berjalan, loading=true -> user terlempar ke /splash dan
+      // nyangkut di sana setelah login sukses. `loading` hanya untuk tombol.
+      const s = AuthState();
+      expect(s.loading, false);
     });
 
     test('AuthState.copyWith mempertahankan nilai yang tidak diubah', () {

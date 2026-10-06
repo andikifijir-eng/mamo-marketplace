@@ -43,7 +43,7 @@ GoRouter buildRouter(Ref ref) {
       final auth = ref.read(authProvider);
       final loc = state.matchedLocation;
       final publicRoutes = ['/splash', '/onboarding', '/login', '/register'];
-      if (auth.loading) return loc == '/splash' ? null : '/splash';
+      if (auth.initializing) return loc == '/splash' ? null : '/splash';
       if (!auth.loggedIn && !publicRoutes.contains(loc)) return '/login';
       if (auth.loggedIn && publicRoutes.contains(loc) && loc != '/splash') return '/home';
       return null;
