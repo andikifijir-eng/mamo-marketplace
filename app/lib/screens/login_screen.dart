@@ -36,7 +36,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (ok) {
-      context.go('/home');
+      // Alur user: tiap login sukses tampilkan Onboarding dulu, baru Home.
+      context.go('/onboarding');
     } else {
       showSnack(context, ref.read(authProvider).error ?? 'Login gagal', error: true);
     }

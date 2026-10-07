@@ -45,7 +45,11 @@ GoRouter buildRouter(Ref ref) {
       final publicRoutes = ['/splash', '/onboarding', '/login', '/register'];
       if (auth.initializing) return loc == '/splash' ? null : '/splash';
       if (!auth.loggedIn && !publicRoutes.contains(loc)) return '/login';
-      if (auth.loggedIn && publicRoutes.contains(loc) && loc != '/splash') return '/home';
+      // /onboarding boleh diakses saat sudah login: onboarding post-login
+      if (auth.loggedIn && publicRoutes.contains(loc) &&
+          loc != '/splash' && loc != '/onboarding') {
+        return '/home';
+      }
       return null;
     },
     routes: [
