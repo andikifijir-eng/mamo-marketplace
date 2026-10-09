@@ -258,6 +258,7 @@ class Conversation {
   final String? otherName;
   final String? otherAvatar;
   final String? lastMessage;
+  final DateTime? lastMessageAt;
   final int unreadCount;
 
   Conversation({
@@ -269,6 +270,7 @@ class Conversation {
     this.otherName,
     this.otherAvatar,
     this.lastMessage,
+    this.lastMessageAt,
     this.unreadCount = 0,
   });
 
@@ -287,6 +289,9 @@ class Conversation {
       otherName: prof?['fullName'] ?? (other?['email'] as String?)?.split('@').first,
       otherAvatar: prof?['avatar'],
       lastMessage: (msgs != null && msgs.isNotEmpty) ? msgs.first['message'] : null,
+      lastMessageAt: (msgs != null && msgs.isNotEmpty && msgs.first['createdAt'] != null)
+          ? DateTime.tryParse(msgs.first['createdAt'])
+          : null,
       unreadCount: (counts?['messages'] ?? 0).toInt(),
     );
   }
