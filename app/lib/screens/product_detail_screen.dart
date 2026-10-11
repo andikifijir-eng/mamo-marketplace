@@ -8,6 +8,9 @@ import '../models/models.dart';
 import '../state/providers.dart';
 import '../widgets/common.dart';
 
+/// Detail produk sesuai desain Figma — fokus COD.
+/// Header abu, gambar besar, harga di kartu kuning, nama, deskripsi
+/// collapsible, kartu penjual + rating + Chat, tombol bawah "Beli COD".
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
   const ProductDetailScreen({super.key, required this.productId});
@@ -20,6 +23,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   bool _fav = false;
   bool _busy = false;
   int _imageIndex = 0;
+  bool _descExpanded = false;
 
   Future<void> _toggleFavorite(String productId) async {
     setState(() => _busy = true);
@@ -32,7 +36,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       if (!mounted) return;
       setState(() => _fav = !_fav);
       ref.invalidate(favoritesProvider);
-      showSnack(context, _fav ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit');
     } catch (e) {
       if (mounted) showSnack(context, ApiClient.errorMessage(e), error: true);
     } finally {
@@ -45,9 +48,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     try {
       await ref.read(cartRepoProvider).add(productId);
       ref.invalidate(cartProvider);
-      if (mounted) {
-        showSnack(context, 'Masuk ke keranjang');
-      }
+      if (mounted) showSnack(context, 'Masuk ke keranjang');
     } catch (e) {
       if (mounted) showSnack(context, ApiClient.errorMessage(e), error: true);
     } finally {
@@ -68,26 +69,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
   }
 
+  Future<void> _buyCod(Product p) async {
+    if (_busy || p.stock < 1 || p.sellerId == ref.read(authProvider).user?.id) return;
+    await _addToCart(p.id);
+    if (!mounted) return;
+    context.push('/checkout');
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(productDetailProvider(widget.productId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Produk'),
-        actions: [
-          async.maybeWhen(
-            data: (d) => IconButton(
-              onPressed: _busy ? null : () => _toggleFavorite(d.product.id),
-              icon: Icon(
-                _fav || d.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: _fav || d.isFavorite ? MamoColors.danger : null,
-              ),
-            ),
-            orElse: () => const SizedBox.shrink(),
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF7F7FA),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
         error: (e, _) => ErrorState(
@@ -98,89 +92,233 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           final p = d.product;
           _fav = d.isFavorite;
           final images = p.images.isEmpty ? [''] : p.images.map((e) => e.imageUrl).toList();
+          final router = GoRouter.maybeOf(context);
+          final canPop = router?.canPop() ?? false;
+
           return Column(
             children: [
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // Gambar
+                    // ── Gambar produk + header overlay ───────────────
                     SizedBox(
-                      height: 280,
-                      child: PageView.builder(
-                        itemCount: images.length,
-                        onPageChanged: (i) => setState(() => _imageIndex = i),
-                        itemBuilder: (c, i) => ProductImageBox(
-                          url: images[i].isEmpty ? null : images[i],
-                          height: 280,
-                          width: double.infinity,
-                          radius: 0,
-                        ),
-                      ),
-                    ),
-                    if (images.length > 1)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            images.length,
-                            (i) => Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: i == _imageIndex ? 18 : 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: i == _imageIndex
-                                    ? MamoColors.primary
-                                    : MamoColors.cardBorder,
-                                borderRadius: BorderRadius.circular(MamoRadius.pill),
+                      height: 300,
+                      child: Stack(
+                        children: [
+                          PageView.builder(
+                            itemCount: images.length,
+                            onPageChanged: (i) => setState(() => _imageIndex = i),
+                            itemBuilder: (c, i) => ProductImageBox(
+                              url: images[i].isEmpty ? null : images[i],
+                              height: 300,
+                              width: double.infinity,
+                              radius: 0,
+                            ),
+                          ),
+                          // Header overlay
+                          Positioned(
+                            top: 0, left: 0, right: 0,
+                            child: SafeArea(
+                              bottom: false,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                                child: Row(
+                                  children: [
+                                    _CircleBtn(
+                                      icon: Icons.arrow_back_ios_new_rounded,
+                                      onTap: () {
+                                        if (canPop) {
+                                          router!.pop();
+                                        } else {
+                                          context.go('/home');
+                                        }
+                                      },
+                                      bg: Colors.white,
+                                    ),
+                                    const Spacer(),
+                                    _CircleBtn(
+                                      icon: Icons.share_outlined,
+                                      onTap: () {},
+                                      bg: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _CircleBtn(
+                                      icon: _fav || d.isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      iconColor: _fav || d.isFavorite
+                                          ? const Color(0xFFEF4444)
+                                          : null,
+                                      onTap: _busy ? null : () => _toggleFavorite(p.id),
+                                      bg: Colors.white,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          // Page indicator
+                          if (images.length > 1)
+                            Positioned(
+                              bottom: 10, left: 0, right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(images.length, (i) => Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  width: i == _imageIndex ? 18 : 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: i == _imageIndex
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                )),
+                              ),
+                            ),
+                        ],
                       ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
+                    ),
+
+                    // ── Nama + Harga ──────────────────────────────────
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(rupiah.format(p.price),
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: MamoColors.primary)),
-                          const SizedBox(height: 8),
                           Text(p.name,
                               style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700, height: 1.35)),
+                                fontSize: 17, fontWeight: FontWeight.w700,
+                                color: Color(0xFF0B0B0B), height: 1.3)),
                           const SizedBox(height: 10),
-                          Wrap(spacing: 8, children: [
-                            StatusPill(
-                              label: p.conditionLabel,
-                              color: MamoColors.primary,
-                              bg: MamoColors.infoBg,
-                              icon: Icons.sell_outlined,
+                          // Harga dalam kartu kuning
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF3DD),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            StatusPill(
-                              label: 'Stok ${p.stock}',
-                              color: p.stock > 0 ? MamoColors.success : MamoColors.danger,
-                              bg: p.stock > 0 ? MamoColors.successBg : MamoColors.dangerBg,
-                              icon: Icons.inventory_2_outlined,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(rupiah.format(p.price),
+                                          style: const TextStyle(
+                                            fontSize: 20, fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0B0B0B))),
+                                      const SizedBox(height: 2),
+                                      Row(children: [
+                                        StatusPill(
+                                          label: p.conditionLabel,
+                                          color: const Color(0xFF4858E8),
+                                          bg: const Color(0xFFEEF0FF),
+                                          icon: Icons.sell_outlined,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        StatusPill(
+                                          label: 'Stok ${p.stock}',
+                                          color: p.stock > 0
+                                              ? const Color(0xFF168A61)
+                                              : const Color(0xFFEF4444),
+                                          bg: p.stock > 0
+                                              ? const Color(0xFFDCFCE7)
+                                              : const Color(0xFFFEE2E2),
+                                          icon: Icons.inventory_2_outlined,
+                                        ),
+                                      ]),
+                                    ],
+                                  ),
+                                ),
+                                if (d.rating != null)
+                                  Column(
+                                    children: [
+                                      Row(children: [
+                                        const Icon(Icons.star,
+                                            size: 16, color: Color(0xFFEAB854)),
+                                        const SizedBox(width: 2),
+                                        Text(d.rating!.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              fontSize: 16, fontWeight: FontWeight.w800,
+                                              color: Color(0xFF0B0B0B))),
+                                      ]),
+                                      Text('${d.ratingCount} ulasan',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF999DA8))),
+                                    ],
+                                  ),
+                              ],
                             ),
-                            if (d.rating != null)
-                              StatusPill(
-                                label: '${d.rating!.toStringAsFixed(1)} (${d.ratingCount})',
-                                color: Color(0xFFD97706),
-                                bg: MamoColors.warningBg,
-                                icon: Icons.star,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── Deskripsi ────────────────────────────────────
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Deskripsi',
+                              style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700,
+                                color: Color(0xFF0B0B0B))),
+                          const SizedBox(height: 8),
+                          Text(
+                            (p.description == null || p.description!.isEmpty)
+                                ? 'Penjual belum menuliskan deskripsi.'
+                                : p.description!,
+                            style: const TextStyle(
+                              fontSize: 13, color: Color(0xFF6B7280), height: 1.6),
+                            maxLines: _descExpanded ? null : 3,
+                            overflow: _descExpanded
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
+                          ),
+                          if (p.description != null && p.description!.length > 120)
+                            GestureDetector(
+                              onTap: () => setState(() => _descExpanded = !_descExpanded),
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  _descExpanded ? 'Sembunyikan' : 'Baca selengkapnya',
+                                  style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4858E8),
+                                  ),
+                                ),
                               ),
-                          ]),
-                          const Divider(height: 32),
-                          // Info penjual
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── Penjual ──────────────────────────────────────
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Nama Penjual',
+                              style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700,
+                                color: Color(0xFF0B0B0B))),
+                          const SizedBox(height: 12),
                           Row(children: [
                             CircleAvatar(
-                              radius: 22,
-                              backgroundColor: MamoColors.infoBg,
+                              radius: 24,
+                              backgroundColor: const Color(0xFFEEF0FF),
                               backgroundImage: (p.sellerAvatar != null &&
                                       p.sellerAvatar!.isNotEmpty)
                                   ? NetworkImage(p.sellerAvatar!)
@@ -189,7 +327,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   ? Text(
                                       (p.sellerName ?? 'P').characters.first.toUpperCase(),
                                       style: const TextStyle(
-                                          color: MamoColors.primary, fontWeight: FontWeight.w700))
+                                        color: Color(0xFF4858E8),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ))
                                   : null,
                             ),
                             const SizedBox(width: 12),
@@ -199,41 +340,65 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 children: [
                                   Text(p.sellerName ?? 'Penjual',
                                       style: const TextStyle(
-                                          fontSize: 14, fontWeight: FontWeight.w700)),
+                                        fontSize: 14, fontWeight: FontWeight.w700,
+                                        color: Color(0xFF0B0B0B))),
                                   const SizedBox(height: 2),
                                   Row(children: [
                                     const Icon(Icons.location_on_outlined,
-                                        size: 12, color: MamoColors.textMuted),
+                                        size: 12, color: Color(0xFF999DA8)),
                                     const SizedBox(width: 2),
-                                    Text(p.location ?? p.categoryName ?? 'Lokasi tidak disebutkan',
+                                    Expanded(
+                                      child: Text(
+                                        p.location ?? p.categoryName ?? 'Lokasi tidak disebutkan',
                                         style: const TextStyle(
-                                            fontSize: 11, color: MamoColors.textSecondary)),
+                                          fontSize: 11, color: Color(0xFF6B7280)),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   ]),
                                 ],
                               ),
                             ),
-                            OutlinedButton(
-                              onPressed: () => _chatSeller(p),
-                              style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(0, 38),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14)),
-                              child: const Text('Chat', style: TextStyle(fontSize: 13)),
+                            GestureDetector(
+                              onTap: () => _chatSeller(p),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF0FF),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline_rounded,
+                                        size: 14, color: Color(0xFF4858E8)),
+                                    SizedBox(width: 4),
+                                    Text('Chat Penjual',
+                                        style: TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.w600,
+                                          color: Color(0xFF4858E8))),
+                                  ],
+                                ),
+                              ),
                             ),
                           ]),
-                          const Divider(height: 32),
-                          const Text('Deskripsi',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          Text(
-                            (p.description == null || p.description!.isEmpty)
-                                ? 'Penjual belum menuliskan deskripsi.'
-                                : p.description!,
-                            style: const TextStyle(
-                                fontSize: 13, color: MamoColors.textSecondary, height: 1.6),
-                          ),
-                          const Divider(height: 32),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── Ulasan ───────────────────────────────────────
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           const Text('Ulasan Pembeli',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                              style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w700,
+                                color: Color(0xFF0B0B0B))),
                           const SizedBox(height: 8),
                           _Reviews(productId: p.id),
                           const SizedBox(height: 20),
@@ -243,51 +408,130 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ],
                 ),
               ),
-              // Bottom bar aksi
+
+              // ── Bottom bar: fokus COD ────────────────────────────
               Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  border: Border(top: BorderSide(color: MamoColors.cardBorder)),
+                  border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
                 ),
                 child: SafeArea(
                   top: false,
-                  child: Row(children: [
-                    OutlinedButton(
-                      onPressed: _busy ? null : () => _chatSeller(p),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(52, 50),
-                        padding: EdgeInsets.zero,
+                  child: Row(
+                    children: [
+                      // Chat
+                      GestureDetector(
+                        onTap: () => _chatSeller(p),
+                        child: Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF0FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.chat_bubble_outline_rounded,
+                              size: 22, color: Color(0xFF4858E8)),
+                        ),
                       ),
-                      child: const Icon(Icons.chat_bubble_outline, size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: (_busy || p.stock < 1 || p.sellerId == ref.read(authProvider).user?.id)
+                      const SizedBox(width: 10),
+                      // Keranjang
+                      GestureDetector(
+                        onTap: (_busy || p.stock < 1)
                             ? null
                             : () => _addToCart(p.id),
-                        child: const Text('+ Keranjang'),
+                        child: Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF0FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.shopping_cart_outlined,
+                              size: 22, color: Color(0xFF4858E8)),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: (_busy || p.stock < 1 || p.sellerId == ref.read(authProvider).user?.id)
-                            ? null
-                            : () async {
-                                await _addToCart(p.id);
-                                if (context.mounted) context.push('/checkout');
-                              },
-                        child: Text(p.stock < 1 ? 'Stok Habis' : 'Beli Sekarang'),
+                      const SizedBox(width: 10),
+                      // Beli COD (tombol utama besar)
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: (_busy || p.stock < 1 ||
+                                  p.sellerId == ref.read(authProvider).user?.id)
+                              ? null
+                              : () => _buyCod(p),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4858E8),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: _busy
+                                  ? const SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.local_shipping_rounded,
+                                            size: 18, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          p.stock < 1 ? 'Stok Habis' : 'Beli COD',
+                                          style: const TextStyle(
+                                            fontSize: 15, fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ]),
+                    ],
+                  ),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Komponen kecil ─────────────────────────────────────────────
+
+class _CircleBtn extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final Color bg;
+  final VoidCallback? onTap;
+  const _CircleBtn({
+    required this.icon,
+    this.iconColor,
+    required this.bg,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: bg.withValues(alpha: 0.92),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8, offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 18,
+            color: iconColor ?? const Color(0xFF0B0B0B)),
       ),
     );
   }
@@ -321,31 +565,36 @@ class _Reviews extends ConsumerWidget {
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: MamoColors.infoBg,
+                  backgroundColor: const Color(0xFFEEF0FF),
                   child: Text(reviewer.toString().characters.first.toUpperCase(),
                       style: const TextStyle(
-                          fontSize: 12, color: MamoColors.primary, fontWeight: FontWeight.w700)),
+                        fontSize: 12, color: Color(0xFF4858E8),
+                        fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(reviewer,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(i < rating ? Icons.star : Icons.star_border,
-                            size: 13, color: Color(0xFFD97706)),
-                      ),
-                    ),
-                    if (r['comment'] != null) ...[
-                      const SizedBox(height: 4),
-                      Text('${r['comment']}',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(reviewer,
                           style: const TextStyle(
-                              fontSize: 12, color: MamoColors.textSecondary, height: 1.5)),
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (i) => Icon(i < rating ? Icons.star : Icons.star_border,
+                              size: 13, color: const Color(0xFFEAB854)),
+                        ),
+                      ),
+                      if (r['comment'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text('${r['comment']}',
+                            style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF6B7280), height: 1.5)),
+                      ],
                     ],
-                  ]),
+                  ),
                 ),
               ]),
             );
