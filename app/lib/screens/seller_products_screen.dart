@@ -20,6 +20,17 @@ class SellerProductsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            final router = GoRouter.maybeOf(context);
+            if (router?.canPop() ?? false) {
+              router!.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text('Listing Saya'),
         actions: [
           IconButton(

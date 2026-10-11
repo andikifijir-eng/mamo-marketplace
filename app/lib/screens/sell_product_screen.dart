@@ -598,7 +598,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => context.go('/seller/products'),
+                onPressed: () => context.pushReplacement('/seller/products'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(50),
                   side: const BorderSide(color: MamoColors.primary),
