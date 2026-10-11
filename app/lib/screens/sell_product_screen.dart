@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../state/providers.dart';
 import '../widgets/common.dart';
+import '../data/wilayah.dart';
 
 /// Form jual barang — multi-step wizard sesuai desain Figma:
 /// Langkah 1: Foto → Langkah 2: Info barang → Langkah 3: Sukses.
@@ -30,6 +31,8 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   String _condition = 'used';
   String? _categoryId;
+  String? _province;
+  String? _city;
   final List<String> _imageUrls = [];
   bool _busy = false;
   bool _uploading = false;
@@ -49,6 +52,12 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
       _price.text = '${p.price}';
       _stock.text = '${p.stock}';
       _location.text = p.location ?? '';
+      // parse existing location: "Kota, Provinsi"
+      if (p.location != null && p.location!.contains(', ')) {
+        final parts = p.location!.split(', ');
+        _city = parts[0].trim();
+        _province = parts[1].trim();
+      }
       _condition = p.condition;
       _categoryId = p.categoryId;
       _imageUrls.addAll(p.images.map((e) => e.imageUrl));
@@ -57,7 +66,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _desc, _price, _stock, _location]) {
+    for (final c in [_name, _desc, _price, _stock]) {
       c.dispose();
     }
     super.dispose();
@@ -116,10 +125,11 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
         'description': _desc.text.trim(),
         'price': int.tryParse(_price.text.trim()) ?? 0,
         'stock': int.tryParse(_stock.text.trim()) ?? 1,
-        'condition': _condition,
+        'condition': _condition == 'like_new' ? 'used' : _condition,
         'status': 'active',
         if (_categoryId != null) 'categoryId': _categoryId,
-        if (_location.text.trim().isNotEmpty) 'location': _location.text.trim(),
+        if (_city != null && _province != null)
+          'location': '$_city, $_province',
         'images': _imageUrls,
       };
       if (isEdit) {
@@ -130,9 +140,9 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           description: payload['description'] as String?,
           price: payload['price'] as int,
           stock: payload['stock'] as int,
-          condition: _condition,
+          condition: _condition == 'like_new' ? 'used' : _condition,
           categoryId: _categoryId,
-          location: _location.text.trim().isEmpty ? null : _location.text.trim(),
+          location: (_city != null && _province != null) ? '$_city, $_province' : null,
           images: _imageUrls,
         );
       }
@@ -362,6 +372,9 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
         padding: const EdgeInsets.fromLTRB(22, 8, 22, 100),
         children: [
           const _SectionLabel('Ceritakan barangmu'),
+          const SizedBox(height: 4),
+          Text('Detail yang lengkap membantu pembeli lebih yakin',
+              style: TextStyle(fontSize: 13, color: MamoColors.textMuted)),
           const SizedBox(height: 16),
 
           // Nama
@@ -369,7 +382,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           const SizedBox(height: 6),
           TextFormField(
             controller: _name,
-            decoration: const InputDecoration(hintText: 'Contoh: MacBook Air M1 2020'),
+            decoration: const InputDecoration(hintText: 'Masukkan nama barang'),
             validator: (v) =>
                 (v == null || v.trim().length < 3) ? 'Nama minimal 3 karakter' : null,
           ),
@@ -381,7 +394,10 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           TextFormField(
             controller: _price,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(prefixText: 'Rp '),
+            decoration: const InputDecoration(
+              prefixText: 'Rp ',
+              hintText: 'Masukkan harga barang',
+            ),
             validator: (v) {
               final n = int.tryParse(v?.trim() ?? '');
               if (n == null || n <= 0) return 'Harga tidak valid';
@@ -390,44 +406,42 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Kategori
+          // Kategori — dropdown
           _FieldLabel('Kategori'),
           const SizedBox(height: 6),
           cats.when(
             loading: () => const LinearProgressIndicator(),
             error: (_, __) => const Text('Gagal memuat kategori',
                 style: TextStyle(fontSize: 12, color: MamoColors.danger)),
-            data: (list) => Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: list
-                  .map((c) => ChoiceChip(
-                        label: Text(c.name),
-                        selected: _categoryId == c.id,
-                        onSelected: (_) =>
-                            setState(() => _categoryId = _categoryId == c.id ? null : c.id),
-                      ))
+            data: (list) => DropdownButtonFormField<String>(
+              initialValue: _categoryId,
+              decoration: const InputDecoration(hintText: 'Pilih kategori'),
+              items: list
+                  .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                   .toList(),
+              onChanged: (v) => setState(() => _categoryId = v),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Kondisi
+          // Kondisi — Baru / Seperti Baru / Bekas
           _FieldLabel('Kondisi'),
           const SizedBox(height: 6),
-          Row(children: [
-            ChoiceChip(
-              label: const Text('Baru'),
-              selected: _condition == 'new',
-              onSelected: (_) => setState(() => _condition = 'new'),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: const Text('Bekas'),
-              selected: _condition == 'used',
-              onSelected: (_) => setState(() => _condition = 'used'),
-            ),
-          ]),
+          DropdownButtonFormField<String>(
+            initialValue: _condition,
+            decoration: const InputDecoration(hintText: 'Pilih kondisi'),
+            items: const [
+              DropdownMenuItem(value: 'new', child: Text('Baru')),
+              DropdownMenuItem(value: 'like_new', child: Text('Seperti Baru')),
+              DropdownMenuItem(value: 'used', child: Text('Bekas')),
+            ],
+            onChanged: (v) => setState(() => _condition = v ?? 'used'),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Barang dengan kondisi lebih baik cenderung lebih cepat laku',
+            style: TextStyle(fontSize: 11, color: MamoColors.textMuted),
+          ),
           const SizedBox(height: 16),
 
           // Stok
@@ -458,15 +472,42 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Lokasi
+          // Lokasi — dropdown Provinsi + Kota
           _FieldLabel('Lokasi barang'),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _location,
+          const SizedBox(height: 4),
+          Text('Pilih lokasi barang agar pembeli lebih mudah menemukanmu.',
+              style: TextStyle(fontSize: 11, color: MamoColors.textMuted)),
+          const SizedBox(height: 8),
+
+          // Provinsi
+          DropdownButtonFormField<String>(
+            initialValue: _province,
             decoration: const InputDecoration(
-              hintText: 'Contoh: Tembalang, Semarang',
+              hintText: 'Pilih provinsi',
               prefixIcon: Icon(Icons.location_on_outlined, size: 20),
             ),
+            items: provinsiList
+                .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                .toList(),
+            onChanged: (v) => setState(() {
+              _province = v;
+              _city = null; // reset kota saat provinsi berubah
+            }),
+            validator: (v) => v == null ? 'Pilih provinsi' : null,
+          ),
+          const SizedBox(height: 12),
+
+          // Kota
+          DropdownButtonFormField<String>(
+            initialValue: _city,
+            decoration: const InputDecoration(hintText: 'Pilih kota'),
+            items: (_province != null && wilayahIndonesia.containsKey(_province))
+                ? wilayahIndonesia[_province]!
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList()
+                : [],
+            onChanged: (_province == null) ? null : (v) => setState(() => _city = v),
+            validator: (v) => v == null ? 'Pilih kota' : null,
           ),
         ],
       ),
