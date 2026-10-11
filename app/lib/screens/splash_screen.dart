@@ -25,7 +25,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Tunggu AuthNotifier.restore() selesai — jangan pakai delay statis,
     // sebab kalau restore belum rampung saat _go jalan, router redirect
     // balik ke /splash → loop tak terbatas → stuck loading.
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 60; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) return;
       final auth = ref.read(authProvider);
