@@ -43,19 +43,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
   }
 
-  Future<void> _addToCart(String productId) async {
-    setState(() => _busy = true);
-    try {
-      await ref.read(cartRepoProvider).add(productId);
-      ref.invalidate(cartProvider);
-      if (mounted) showSnack(context, 'Masuk ke keranjang');
-    } catch (e) {
-      if (mounted) showSnack(context, ApiClient.errorMessage(e), error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   Future<void> _chatSeller(Product p) async {
     final auth = ref.read(authProvider);
     if (auth.user == null) return;
@@ -69,19 +56,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
   }
 
-  Future<void> _buyCod(Product p) async {
-    if (_busy || p.stock < 1 || p.sellerId == ref.read(authProvider).user?.id) return;
-    await _addToCart(p.id);
-    if (!mounted) return;
-    context.push('/checkout');
-  }
-
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(productDetailProvider(widget.productId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7FA),
+      backgroundColor: Colors.white,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
         error: (e, _) => ErrorState(
@@ -258,8 +238,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 8),
-
                     // ── Deskripsi ────────────────────────────────────
                     Container(
                       color: Colors.white,
@@ -300,8 +278,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 8),
 
                     // ── Penjual ──────────────────────────────────────
                     Container(
@@ -386,8 +362,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 8),
-
                     // ── Ulasan ───────────────────────────────────────
                     Container(
                       color: Colors.white,
@@ -409,7 +383,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
               ),
 
-              // ── Bottom bar: fokus COD ────────────────────────────
+              // ── Bottom bar: langsung ke Chat ─────────────────────
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 decoration: const BoxDecoration(
@@ -418,77 +392,43 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
                 child: SafeArea(
                   top: false,
-                  child: Row(
-                    children: [
-                      // Chat
-                      GestureDetector(
-                        onTap: () => _chatSeller(p),
-                        child: Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEF0FF),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.chat_bubble_outline_rounded,
-                              size: 22, color: Color(0xFF4858E8)),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: (_busy ||
+                              p.sellerId == ref.read(authProvider).user?.id)
+                          ? null
+                          : () => _chatSeller(p),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4858E8),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 0,
                       ),
-                      const SizedBox(width: 10),
-                      // Keranjang
-                      GestureDetector(
-                        onTap: (_busy || p.stock < 1)
-                            ? null
-                            : () => _addToCart(p.id),
-                        child: Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEF0FF),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.shopping_cart_outlined,
-                              size: 22, color: Color(0xFF4858E8)),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Beli COD (tombol utama besar)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: (_busy || p.stock < 1 ||
-                                  p.sellerId == ref.read(authProvider).user?.id)
-                              ? null
-                              : () => _buyCod(p),
-                          child: Container(
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4858E8),
-                              borderRadius: BorderRadius.circular(12),
+                      child: _busy
+                          ? const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                          : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.chat_bubble_rounded,
+                                    size: 18, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Chat Penjual',
+                                  style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Center(
-                              child: _busy
-                                  ? const SizedBox(
-                                      width: 20, height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white))
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.local_shipping_rounded,
-                                            size: 18, color: Colors.white),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          p.stock < 1 ? 'Stok Habis' : 'Beli COD',
-                                          style: const TextStyle(
-                                            fontSize: 15, fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
