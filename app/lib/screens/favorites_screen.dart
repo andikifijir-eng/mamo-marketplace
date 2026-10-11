@@ -26,7 +26,7 @@ enum _SortMode { newest, cheapest, expensive, popular }
 class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   int _tabIndex = 0; // 0=Semua, 1=Aktif, 2=Habis
   _SortMode _sort = _SortMode.newest;
-  Set<String> _stockAlerts = {}; // product IDs with stock alert on
+  Set<String> _stockAlerts = {};
 
   @override
   void initState() {
@@ -90,6 +90,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     final router = GoRouter.maybeOf(context);
     final canPop = router?.canPop() ?? false;
 
+    // Compute counts from async data
+    final totalCount = async.maybeWhen(data: (d) => d.length, orElse: () => 0);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA),
       body: SafeArea(
@@ -152,20 +155,18 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                 ],
               ),
             ),
-            // ── Tabs: Semua, Aktif, Habis ──────────────────────────
+            // ── Tabs: text style with underline indicator ───────────
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
                 children: [
-                  _tabChip('Semua', 0),
-                  const SizedBox(width: 8),
-                  _tabChip('Aktif', 1),
-                  const SizedBox(width: 8),
-                  _tabChip('Habis', 2),
+                  _tabItem('Semua', 0, count: totalCount),
+                  _tabItem('Aktif', 1),
+                  _tabItem('Habis', 2),
                 ],
               ),
             ),
+            const Divider(height: 1, color: Color(0xFFECEEF0)),
             // ── Grid ───────────────────────────────────────────────
             Expanded(
               child: async.when(
@@ -184,15 +185,13 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                     );
                   }
 
-                  // Filter by tab
                   final filtered = products.where((p) {
-                    if (_tabIndex == 0) return true; // Semua
-                    if (_tabIndex == 1) return p.stock > 0; // Aktif
-                    if (_tabIndex == 2) return p.stock <= 0; // Habis
+                    if (_tabIndex == 0) return true;
+                    if (_tabIndex == 1) return p.stock > 0;
+                    if (_tabIndex == 2) return p.stock <= 0;
                     return true;
                   }).toList();
 
-                  // Apply sort
                   final sorted = _applySort(filtered);
 
                   if (sorted.isEmpty) {
@@ -227,10 +226,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                               conditionLabel: p.conditionLabel,
                               onTap: () => context.push('/product/${p.id}'),
                             ),
-                            // Status badge top-left
                             Positioned(
-                              top: 8,
-                              left: 8,
+                              top: 8, left: 8,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
@@ -243,8 +240,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                 child: Text(
                                   p.stock > 0 ? 'Aktif' : 'Habis',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10, fontWeight: FontWeight.w700,
                                     color: p.stock > 0
                                         ? const Color(0xFF168A61)
                                         : const Color(0xFFD3454D),
@@ -252,15 +248,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                 ),
                               ),
                             ),
-                            // Remove favorite button top-right
                             Positioned(
-                              top: 8,
-                              right: 8,
+                              top: 8, right: 8,
                               child: GestureDetector(
                                 onTap: () async {
-                                  await ref
-                                      .read(productRepoProvider)
-                                      .removeFavorite(p.id);
+                                  await ref.read(productRepoProvider).removeFavorite(p.id);
                                   ref.invalidate(favoritesProvider);
                                   if (context.mounted) {
                                     showSnack(context, 'Dihapus dari favorit');
@@ -272,9 +264,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                     color: Colors.white,
                                     shape: BoxShape.circle,
                                     boxShadow: [
-                                      BoxShadow(
-                                          color: Color(0x1A000000),
-                                          blurRadius: 6),
+                                      BoxShadow(color: Color(0x1A000000), blurRadius: 6),
                                     ],
                                   ),
                                   child: const Icon(Icons.favorite,
@@ -282,25 +272,19 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                 ),
                               ),
                             ),
-                            // ── FITUR 2: Add to cart (bottom-right) ───
                             if (p.stock > 0)
                               Positioned(
-                                bottom: 8,
-                                right: 8,
+                                bottom: 8, right: 8,
                                 child: GestureDetector(
                                   onTap: () async {
                                     try {
-                                      await ref
-                                          .read(cartRepoProvider)
-                                          .add(p.id);
+                                      await ref.read(cartRepoProvider).add(p.id);
                                       if (context.mounted) {
-                                        showSnack(context,
-                                            'Ditambah ke keranjang');
+                                        showSnack(context, 'Ditambah ke keranjang');
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        showSnack(context,
-                                            'Gagal: ${ApiClient.errorMessage(e)}');
+                                        showSnack(context, 'Gagal: ${ApiClient.errorMessage(e)}');
                                       }
                                     }
                                   },
@@ -311,22 +295,18 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF4858E8)
-                                              .withValues(alpha: 0.3),
+                                          color: const Color(0xFF4858E8).withValues(alpha: 0.3),
                                           blurRadius: 8,
                                         ),
                                       ],
                                     ),
-                                    child: const Icon(
-                                        Icons.shopping_cart_outlined,
+                                    child: const Icon(Icons.shopping_cart_outlined,
                                         size: 16, color: Colors.white),
                                   ),
                                 ),
                               ),
-                            // ── FITUR 3: Stock alert bell (bottom-left) ─
                             Positioned(
-                              bottom: 8,
-                              left: 8,
+                              bottom: 8, left: 8,
                               child: GestureDetector(
                                 onTap: () async {
                                   await _toggleAlert(p.id);
@@ -347,9 +327,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                         : Colors.white,
                                     shape: BoxShape.circle,
                                     boxShadow: [
-                                      BoxShadow(
-                                          color: const Color(0x1A000000),
-                                          blurRadius: 4),
+                                      BoxShadow(color: const Color(0x1A000000), blurRadius: 4),
                                     ],
                                   ),
                                   child: Icon(
@@ -378,7 +356,6 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     );
   }
 
-  // ── FITUR 1: Sort bottom sheet ──────────────────────────────────
   void _showSortSheet() {
     showModalBottomSheet(
       context: context,
@@ -417,22 +394,15 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                       _SortMode.popular => Icons.trending_up_rounded,
                     },
                     size: 20,
-                    color: selected
-                        ? const Color(0xFF4858E8)
-                        : const Color(0xFF9CA3AF),
+                    color: selected ? const Color(0xFF4858E8) : const Color(0xFF9CA3AF),
                   ),
                   title: Text(label,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: selected
-                            ? const Color(0xFF4858E8)
-                            : const Color(0xFF172039))),
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? const Color(0xFF4858E8) : const Color(0xFF172039))),
                   trailing: selected
-                      ? const Icon(Icons.check_circle_rounded,
-                          size: 20, color: Color(0xFF4858E8))
+                      ? const Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4858E8))
                       : null,
                   onTap: () {
                     setState(() => _sort = mode);
@@ -447,23 +417,62 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     );
   }
 
-  Widget _tabChip(String label, int index) {
+  /// Text-style tab with underline indicator + optional count badge.
+  /// Matches Figma target: active = blue text + blue underline,
+  /// inactive = gray text, no underline.
+  Widget _tabItem(String label, int index, {int? count}) {
     final active = _tabIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _tabIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF4858E8) : const Color(0xFFF2F3F6),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: active ? Colors.white : const Color(0xFF6B7280),
-          ),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tabIndex = index),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: active
+                          ? const Color(0xFF4858E8)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                  if (count != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: active
+                            ? const Color(0xFF4858E8)
+                            : const Color(0xFFE8EAF0),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: active
+                              ? Colors.white
+                              : const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Container(
+              height: 2.5,
+              color: active ? const Color(0xFF4858E8) : Colors.transparent,
+            ),
+          ],
         ),
       ),
     );
