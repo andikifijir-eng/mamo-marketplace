@@ -14,7 +14,7 @@ Conversation _conv({String name = 'Penjual 1', int unread = 0, String? prod = 'M
       id: 'c1', buyerId: 'me', sellerId: 's1',
       productName: prod, otherName: name,
       lastMessage: 'Boleh ketemu di perpustakaan kampus?',
-      lastMessageAt: DateTime(2026, 10, 9, 10, 42), unreadCount: unread,
+      lastMessageAt: DateTime.now().copyWith(hour: 10, minute: 42), unreadCount: unread,
     );
 
 AppNotification _notif({bool read = false, String type = 'chat'}) => AppNotification(
