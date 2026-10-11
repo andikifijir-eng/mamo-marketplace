@@ -61,14 +61,14 @@ GoRouter buildRouter(Ref ref) {
         builder: (c, s, child) => HomeShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
+          GoRoute(path: '/search', builder: (c, s) =>
+              SearchScreen(initialCategoryId: s.uri.queryParameters['category'])),
           GoRoute(path: '/favorites', builder: (c, s) => const FavoritesScreen()),
           GoRoute(path: '/cart', builder: (c, s) => const CartScreen()),
           GoRoute(path: '/chat', builder: (c, s) => const ChatListScreen()),
           GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
         ],
       ),
-      GoRoute(path: '/search', builder: (c, s) =>
-          SearchScreen(initialCategoryId: s.uri.queryParameters['category'])),
       GoRoute(path: '/product/:id', builder: (c, s) =>
           ProductDetailScreen(productId: s.pathParameters['id']!)),
       GoRoute(path: '/checkout', builder: (c, s) => const CheckoutScreen()),
