@@ -80,7 +80,18 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/notifications', builder: (c, s) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
       GoRoute(path: '/verification', builder: (c, s) => const VerificationScreen()),
-      GoRoute(path: '/sell', builder: (c, s) => const SellProductScreen(product: null)),
+      GoRoute(
+        path: '/sell',
+        builder: (c, s) {
+          final stepStr = s.uri.queryParameters['step'];
+          final step = int.tryParse(stepStr ?? '0') ?? 0;
+          return SellProductScreen(
+            key: ValueKey('sell_step_$step'),
+            product: null,
+            initialStep: step,
+          );
+        },
+      ),
       GoRoute(path: '/sell/:id', builder: (c, s) =>
           SellProductScreen(product: s.extra as Product?)),
       GoRoute(path: '/seller', builder: (c, s) => const SellerDashboardScreen()),
