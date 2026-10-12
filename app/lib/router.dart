@@ -57,12 +57,12 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/onboarding', builder: (c, s) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
       GoRoute(path: '/register', builder: (c, s) => const RegisterScreen()),
+      GoRoute(path: '/search', builder: (c, s) =>
+          SearchScreen(initialCategoryId: s.uri.queryParameters['category'])),
       ShellRoute(
         builder: (c, s, child) => HomeShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
-          GoRoute(path: '/search', builder: (c, s) =>
-              SearchScreen(initialCategoryId: s.uri.queryParameters['category'])),
           GoRoute(path: '/favorites', builder: (c, s) => const FavoritesScreen()),
           GoRoute(path: '/cart', builder: (c, s) => const CartScreen()),
           GoRoute(path: '/chat', builder: (c, s) => const ChatListScreen()),
