@@ -63,6 +63,7 @@ GoRouter buildRouter(Ref ref) {
         builder: (c, s, child) => HomeShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
+          GoRoute(path: '/seller/products', builder: (c, s) => const SellerProductsScreen()),
           GoRoute(path: '/favorites', builder: (c, s) => const FavoritesScreen()),
           GoRoute(path: '/cart', builder: (c, s) => const CartScreen()),
           GoRoute(path: '/chat', builder: (c, s) => const ChatListScreen()),
@@ -95,7 +96,6 @@ GoRouter buildRouter(Ref ref) {
       GoRoute(path: '/sell/:id', builder: (c, s) =>
           SellProductScreen(product: s.extra as Product?)),
       GoRoute(path: '/seller', builder: (c, s) => const SellerDashboardScreen()),
-      GoRoute(path: '/seller/products', builder: (c, s) => const SellerProductsScreen()),
       GoRoute(path: '/seller/orders', builder: (c, s) => const SellerOrdersScreen()),
     ],
   );

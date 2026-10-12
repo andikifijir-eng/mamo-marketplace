@@ -72,7 +72,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen>
                       if (canPop) {
                         router!.pop();
                       } else {
-                        context.go('/profile');
+                        context.go('/home');
                       }
                     },
                     child: Container(
