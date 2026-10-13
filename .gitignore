@@ -23,3 +23,10 @@ server/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Backups
+backups/
+
+# Preview screenshots
+preview/
+pgsql_log.txt

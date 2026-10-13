@@ -8,6 +8,7 @@ import 'package:mamo/models/models.dart';
 import 'package:mamo/router.dart';
 import 'package:mamo/screens/home_screen.dart';
 import 'package:mamo/screens/login_screen.dart';
+import 'package:mamo/screens/onboarding_screen.dart';
 import 'package:mamo/screens/splash_screen.dart';
 import 'package:mamo/state/providers.dart';
 
@@ -66,24 +67,32 @@ Future<void> _runLoginFlow(WidgetTester tester, Duration loginDelay) async {
   // ignore: avoid_print
   print('DIAG  splash=${find.byType(SplashScreen).evaluate().length} '
       'login=${find.byType(LoginScreen).evaluate().length} '
+      'onboard=${find.byType(OnboardingScreen).evaluate().length} '
       'home=${find.byType(HomeScreen).evaluate().length} '
       'spinner=${find.byType(CircularProgressIndicator).evaluate().length}');
 }
 
 void main() {
-  testWidgets('login LAMBAT (2s) berakhir di Home', (tester) async {
+  testWidgets('login LAMBAT (2s) berakhir di Onboarding', (tester) async {
     await _runLoginFlow(tester, const Duration(seconds: 2));
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsOneWidget);
   });
 
-  testWidgets('login CEPAT (200ms) berakhir di Home', (tester) async {
+  testWidgets('login CEPAT (200ms) berakhir di Onboarding, bukan splash', (tester) async {
     await _runLoginFlow(tester, const Duration(milliseconds: 200));
-    expect(find.byType(HomeScreen), findsOneWidget,
+    expect(find.byType(OnboardingScreen), findsOneWidget,
         reason: 'login cepat tidak boleh nyangkut di splash');
   });
 
-  testWidgets('login SANGAT CEPAT (10ms) berakhir di Home', (tester) async {
+  testWidgets('login SANGAT CEPAT (10ms) berakhir di Onboarding', (tester) async {
     await _runLoginFlow(tester, const Duration(milliseconds: 10));
+    expect(find.byType(OnboardingScreen), findsOneWidget);
+  });
+
+  testWidgets('tap Onboarding melanjutkan ke Home', (tester) async {
+    await _runLoginFlow(tester, const Duration(milliseconds: 10));
+    await tester.tapAt(const Offset(150, 40));
+    await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 }

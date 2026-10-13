@@ -2,7 +2,7 @@ const TOKEN_KEY = 'mamo_admin_token';
 const USER_KEY = 'mamo_admin_user';
 
 // Vite dev pakai proxy /api -> localhost:4000
-export const API_BASE = '/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
